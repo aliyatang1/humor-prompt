@@ -91,7 +91,13 @@ async function generateCaptions(
     throw new Error(`Failed to generate captions: ${response.status} ${response.statusText} - ${errorText}`);
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch (parseError) {
+    const responseText = await response.text();
+    console.error("Failed to parse captions response:", responseText);
+    throw new Error(`Invalid response format from captions API: ${responseText}`);
+  }
 }
 
 // Main function: orchestrate all 4 steps
