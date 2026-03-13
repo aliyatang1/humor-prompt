@@ -6,9 +6,8 @@ import { getUsers, updateUser, deleteUser } from "@/app/actions/admin";
 interface User {
   id: string;
   email: string;
-  full_name: string | null;
   is_superadmin: boolean;
-  created_at: string;
+  created_datetime_utc: string;
 }
 
 export default function UsersPage() {
@@ -16,7 +15,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<{ full_name?: string; is_superadmin?: boolean }>({});
+  const [editData, setEditData] = useState<{ is_superadmin?: boolean }>({});
 
   useEffect(() => {
     loadUsers();
@@ -35,7 +34,7 @@ export default function UsersPage() {
     }
   }
 
-  async function handleUpdate(userId: string, updates: { full_name?: string; is_superadmin?: boolean }) {
+  async function handleUpdate(userId: string, updates: { is_superadmin?: boolean }) {
     try {
       await updateUser(userId, updates);
       setEditingId(null);
@@ -77,7 +76,6 @@ export default function UsersPage() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Email</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Full Name</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Superadmin</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Created</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
@@ -87,23 +85,6 @@ export default function UsersPage() {
               {users.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm text-gray-900">{user.email}</td>
-                  <td className="px-6 py-4 text-sm">
-                    {editingId === user.id ? (
-                      <input
-                        type="text"
-                        value={editData.full_name || user.full_name || ""}
-                        onChange={(e) =>
-                          setEditData({
-                            ...editData,
-                            full_name: e.target.value,
-                          })
-                        }
-                        className="border border-gray-300 rounded px-2 py-1 text-sm"
-                      />
-                    ) : (
-                      <span className="text-gray-700">{user.full_name || "-"}</span>
-                    )}
-                  </td>
                   <td className="px-6 py-4 text-sm">
                     {editingId === user.id ? (
                       <label className="flex items-center space-x-2">
@@ -127,7 +108,7 @@ export default function UsersPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
-                    {new Date(user.created_at).toLocaleDateString()}
+                    {new Date(user.created_datetime_utc).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-sm space-x-2">
                     {editingId === user.id ? (

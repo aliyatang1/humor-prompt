@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getImages, updateImagePublic, deleteImage } from "@/app/actions/admin";
+import { getImages, updateImagePublic, deleteImage, uploadImage } from "@/app/actions/admin";
 import Image from "next/image";
 
 interface ImageData {
@@ -18,6 +18,10 @@ export default function ImagesPage() {
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [uploadUrl, setUploadUrl] = useState("");
+  const [uploadIsPublic, setUploadIsPublic] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     loadImages();
@@ -33,6 +37,28 @@ export default function ImagesPage() {
       setError(err instanceof Error ? err.message : "Failed to load images");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleUpload(e: React.FormEvent) {
+    e.preventDefault();
+    if (!uploadUrl.trim()) {
+      setError("Please enter an image URL");
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setError(null);
+      await uploadImage(uploadUrl, uploadIsPublic);
+      setUploadUrl("");
+      setUploadIsPublic(false);
+      setShowUploadForm(false);
+      loadImages();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload image");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -82,6 +108,59 @@ export default function ImagesPage() {
         </div>
       )}
 
+      {/* Upload Form */}
+      {showUploadForm && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Image</h2>
+          <form onSubmit={handleUpload} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Image URL
+              </label>
+              <input
+                type="url"
+                placeholder="https://example.com/image.jpg"
+                value={uploadUrl}
+                onChange={(e) => setUploadUrl(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="public-toggle"
+                checked={uploadIsPublic}
+                onChange={(e) => setUploadIsPublic(e.target.checked)}
+                className="rounded"
+              />
+              <label htmlFor="public-toggle" className="text-sm text-gray-700">
+                Make image public (visible in gallery)
+              </label>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                type="submit"
+                disabled={uploading}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                {uploading ? "Adding..." : "Add Image"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUploadForm(false);
+                  setUploadUrl("");
+                  setUploadIsPublic(false);
+                }}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       <div className="flex items-center space-x-4">
         <input
           type="text"
@@ -90,6 +169,14 @@ export default function ImagesPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm"
         />
+        {!showUploadForm && (
+          <button
+            onClick={() => setShowUploadForm(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 whitespace-nowrap"
+          >
+            + Add Image
+          </button>
+        )}
         <div className="text-sm text-gray-600">
           {filteredImages.length} of {images.length} images
         </div>
@@ -115,13 +202,19 @@ export default function ImagesPage() {
                 <tr key={image.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="relative w-16 h-16 bg-gray-200 rounded overflow-hidden">
-                      <Image
-                        src={image.url}
-                        alt="Thumbnail"
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
+                      {image.url ? (
+                        <Image
+                          src={image.url}
+                          alt="Thumbnail"
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center w-full h-full text-gray-400 text-xs">
+                          No image
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm font-mono text-gray-900 max-w-xs truncate">
@@ -181,6 +274,7 @@ export default function ImagesPage() {
           <li>Only <strong>public</strong> images appear in the main gallery</li>
           <li>Deleting an image also deletes all associated captions and votes</li>
           <li>Use "Make Private" to hide images from users without deletion</li>
+          <li>Use the "Add Image" button to register new image URLs</li>
         </ul>
       </div>
     </div>

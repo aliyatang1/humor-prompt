@@ -126,8 +126,8 @@ export async function getUsers() {
 
   const { data: users, error } = await supabase
     .from("profiles")
-    .select("id, email, full_name, is_superadmin, created_at")
-    .order("created_at", { ascending: false });
+    .select("id, email, is_superadmin, created_datetime_utc")
+    .order("created_datetime_utc", { ascending: false });
 
   if (error) throw error;
   return users || [];
@@ -136,7 +136,6 @@ export async function getUsers() {
 export async function updateUser(
   userId: string,
   updates: {
-    full_name?: string;
     is_superadmin?: boolean;
   }
 ) {
@@ -233,15 +232,38 @@ export async function deleteImage(imageId: string) {
   return true;
 }
 
-// Caption Management (Read-only)
+// Image Upload Management
+export async function uploadImage(
+  imageUrl: string,
+  isPublic: boolean = false
+) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("images")
+    .insert([
+      {
+        url: imageUrl,
+        is_public: isPublic,
+        created_datetime_utc: new Date().toISOString(),
+      },
+    ])
+    .select();
+
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+// Caption Management
 export async function getCaptions() {
   await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   const { data: captions, error } = await supabase
     .from("captions")
-    .select("id, content, image_id, created_at")
-    .order("created_at", { ascending: false });
+    .select("id, content, image_id, created_datetime_utc")
+    .order("created_datetime_utc", { ascending: false });
 
   if (error) throw error;
 
@@ -266,4 +288,329 @@ export async function getCaptions() {
     ...cap,
     votes: voteMap.get(cap.id) || { upvotes: 0, downvotes: 0 },
   }));
+}
+
+export async function createCaption(
+  content: string,
+  image_id: string
+) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("captions")
+    .insert([
+      {
+        content,
+        image_id,
+      },
+    ])
+    .select();
+
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+export async function updateCaption(
+  id: string,
+  content: string
+) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("captions")
+    .update({ content })
+    .eq("id", id)
+    .select();
+
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+export async function deleteCaption(id: string) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  // Delete votes first (cascade)
+  const { error: voteError } = await supabase
+    .from("caption_votes")
+    .delete()
+    .eq("caption_id", id);
+
+  if (voteError) throw voteError;
+
+  // Then delete caption
+  const { error: captionError } = await supabase
+    .from("captions")
+    .delete()
+    .eq("id", id);
+
+  if (captionError) throw captionError;
+  return true;
+}
+
+// Humor Flavors Management
+export async function getHumorFlavors() {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("humor_flavors")
+    .select("id, created_datetime_utc, description, slug")
+    .order("created_datetime_utc", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createHumorFlavor(
+  description: string,
+  slug: string
+) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("humor_flavors")
+    .insert([
+      {
+        description,
+        slug,
+        created_datetime_utc: new Date().toISOString(),
+      },
+    ])
+    .select();
+
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+export async function updateHumorFlavor(
+  id: number,
+  description: string,
+  slug: string
+) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("humor_flavors")
+    .update({ description, slug })
+    .eq("id", id)
+    .select();
+
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+export async function deleteHumorFlavor(id: number) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  // Delete flavor steps first (cascade)
+  const { error: stepsError } = await supabase
+    .from("humor_flavor_steps")
+    .delete()
+    .eq("humor_flavor_id", id);
+
+  if (stepsError) throw stepsError;
+
+  // Then delete flavor
+  const { error: flavorError } = await supabase
+    .from("humor_flavors")
+    .delete()
+    .eq("id", id);
+
+  if (flavorError) throw flavorError;
+  return true;
+}
+
+// Humor Flavor Steps Management
+export async function getHumorFlavorSteps(flavorId: number) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("humor_flavor_steps")
+    .select("*")
+    .eq("humor_flavor_id", flavorId)
+    .order("order_by", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createHumorFlavorStep(
+  humorFlavorId: number,
+  orderBy: number,
+  llmTemperature: number | null,
+  llmInputTypeId: number,
+  llmOutputTypeId: number,
+  llmModelId: number,
+  humorFlavorStepTypeId: number,
+  llmSystemPrompt: string,
+  llmUserPrompt: string,
+  description: string | null
+) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("humor_flavor_steps")
+    .insert([
+      {
+        humor_flavor_id: humorFlavorId,
+        order_by: orderBy,
+        llm_temperature: llmTemperature,
+        llm_input_type_id: llmInputTypeId,
+        llm_output_type_id: llmOutputTypeId,
+        llm_model_id: llmModelId,
+        humor_flavor_step_type_id: humorFlavorStepTypeId,
+        llm_system_prompt: llmSystemPrompt,
+        llm_user_prompt: llmUserPrompt,
+        description,
+        created_datetime_utc: new Date().toISOString(),
+      },
+    ])
+    .select();
+
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+export async function updateHumorFlavorStep(
+  id: number,
+  orderBy: number,
+  llmTemperature: number | null,
+  llmInputTypeId: number,
+  llmOutputTypeId: number,
+  llmModelId: number,
+  humorFlavorStepTypeId: number,
+  llmSystemPrompt: string,
+  llmUserPrompt: string,
+  description: string | null
+) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("humor_flavor_steps")
+    .update({
+      order_by: orderBy,
+      llm_temperature: llmTemperature,
+      llm_input_type_id: llmInputTypeId,
+      llm_output_type_id: llmOutputTypeId,
+      llm_model_id: llmModelId,
+      humor_flavor_step_type_id: humorFlavorStepTypeId,
+      llm_system_prompt: llmSystemPrompt,
+      llm_user_prompt: llmUserPrompt,
+      description,
+    })
+    .eq("id", id)
+    .select();
+
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+export async function deleteHumorFlavorStep(id: number) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { error } = await supabase
+    .from("humor_flavor_steps")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+  return true;
+}
+
+// LLM Prompt Chains Management
+export async function getLLMPromptChains() {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("llm_prompt_chains")
+    .select("id, created_datetime_utc, caption_request_id")
+    .order("created_datetime_utc", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createLLMPromptChain(
+  captionRequestId: number
+) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("llm_prompt_chains")
+    .insert([
+      {
+        caption_request_id: captionRequestId,
+        created_datetime_utc: new Date().toISOString(),
+      },
+    ])
+    .select();
+
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+export async function updateLLMPromptChain(
+  id: number,
+  captionRequestId: number
+) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("llm_prompt_chains")
+    .update({ caption_request_id: captionRequestId })
+    .eq("id", id)
+    .select();
+
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+export async function deleteLLMPromptChain(id: number) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  // Delete responses first (cascade)
+  const { error: responsesError } = await supabase
+    .from("llm_model_responses")
+    .delete()
+    .eq("llm_prompt_chain_id", id);
+
+  if (responsesError) throw responsesError;
+
+  // Then delete chain
+  const { error: chainError } = await supabase
+    .from("llm_prompt_chains")
+    .delete()
+    .eq("id", id);
+
+  if (chainError) throw chainError;
+  return true;
+}
+
+// LLM Responses (Read-only)
+export async function getLLMResponses(chainId: number) {
+  await requireSuperadmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("llm_model_responses")
+    .select("*")
+    .eq("llm_prompt_chain_id", chainId)
+    .order("created_datetime_utc", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
 }
