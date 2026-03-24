@@ -139,12 +139,12 @@ export async function updateUser(
     is_superadmin?: boolean;
   }
 ) {
-  await requireSuperadmin();
+  const { user } = await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("profiles")
-    .update(updates)
+    .update({ ...updates, modified_by_user_id: user.id })
     .eq("id", userId)
     .select();
 
@@ -197,12 +197,12 @@ export async function updateImagePublic(
   imageId: string,
   isPublic: boolean
 ) {
-  await requireSuperadmin();
+  const { user } = await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("images")
-    .update({ is_public: isPublic })
+    .update({ is_public: isPublic, modified_by_user_id: user.id })
     .eq("id", imageId)
     .select();
 
@@ -237,7 +237,7 @@ export async function uploadImage(
   imageUrl: string,
   isPublic: boolean = false
 ) {
-  await requireSuperadmin();
+  const { user } = await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
@@ -246,7 +246,8 @@ export async function uploadImage(
       {
         url: imageUrl,
         is_public: isPublic,
-        created_datetime_utc: new Date().toISOString(),
+        created_by_user_id: user.id,
+        modified_by_user_id: user.id,
       },
     ])
     .select();
@@ -294,7 +295,7 @@ export async function createCaption(
   content: string,
   image_id: string
 ) {
-  await requireSuperadmin();
+  const { user } = await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
@@ -303,6 +304,8 @@ export async function createCaption(
       {
         content,
         image_id,
+        created_by_user_id: user.id,
+        modified_by_user_id: user.id,
       },
     ])
     .select();
@@ -315,12 +318,12 @@ export async function updateCaption(
   id: string,
   content: string
 ) {
-  await requireSuperadmin();
+  const { user } = await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("captions")
-    .update({ content })
+    .update({ content, modified_by_user_id: user.id })
     .eq("id", id)
     .select();
 
@@ -368,7 +371,7 @@ export async function createHumorFlavor(
   description: string,
   slug: string
 ) {
-  await requireSuperadmin();
+  const { user } = await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
@@ -377,7 +380,8 @@ export async function createHumorFlavor(
       {
         description,
         slug,
-        created_datetime_utc: new Date().toISOString(),
+        created_by_user_id: user.id,
+        modified_by_user_id: user.id,
       },
     ])
     .select();
@@ -391,12 +395,12 @@ export async function updateHumorFlavor(
   description: string,
   slug: string
 ) {
-  await requireSuperadmin();
+  const { user } = await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("humor_flavors")
-    .update({ description, slug })
+    .update({ description, slug, modified_by_user_id: user.id })
     .eq("id", id)
     .select();
 
@@ -453,7 +457,7 @@ export async function createHumorFlavorStep(
   llmUserPrompt: string,
   description: string | null
 ) {
-  await requireSuperadmin();
+  const { user } = await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
@@ -470,7 +474,8 @@ export async function createHumorFlavorStep(
         llm_system_prompt: llmSystemPrompt,
         llm_user_prompt: llmUserPrompt,
         description,
-        created_datetime_utc: new Date().toISOString(),
+        created_by_user_id: user.id,
+        modified_by_user_id: user.id,
       },
     ])
     .select();
@@ -491,7 +496,7 @@ export async function updateHumorFlavorStep(
   llmUserPrompt: string,
   description: string | null
 ) {
-  await requireSuperadmin();
+  const { user } = await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
@@ -506,6 +511,7 @@ export async function updateHumorFlavorStep(
       llm_system_prompt: llmSystemPrompt,
       llm_user_prompt: llmUserPrompt,
       description,
+      modified_by_user_id: user.id,
     })
     .eq("id", id)
     .select();
@@ -544,7 +550,7 @@ export async function getLLMPromptChains() {
 export async function createLLMPromptChain(
   captionRequestId: number
 ) {
-  await requireSuperadmin();
+  const { user } = await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
@@ -552,7 +558,8 @@ export async function createLLMPromptChain(
     .insert([
       {
         caption_request_id: captionRequestId,
-        created_datetime_utc: new Date().toISOString(),
+        created_by_user_id: user.id,
+        modified_by_user_id: user.id,
       },
     ])
     .select();
@@ -565,12 +572,12 @@ export async function updateLLMPromptChain(
   id: number,
   captionRequestId: number
 ) {
-  await requireSuperadmin();
+  const { user } = await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("llm_prompt_chains")
-    .update({ caption_request_id: captionRequestId })
+    .update({ caption_request_id: captionRequestId, modified_by_user_id: user.id })
     .eq("id", id)
     .select();
 
@@ -605,7 +612,7 @@ export async function reorderHumorFlavorStep(
   stepId: number,
   newOrderBy: number
 ) {
-  await requireSuperadmin();
+  const { user } = await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   // Get the step to find its current order and flavor
@@ -658,7 +665,7 @@ export async function reorderHumorFlavorStep(
   // Update the target step
   const { error: updateError } = await supabase
     .from("humor_flavor_steps")
-    .update({ order_by: newOrderBy })
+    .update({ order_by: newOrderBy, modified_by_user_id: user.id })
     .eq("id", stepId);
 
   if (updateError) throw updateError;
@@ -667,7 +674,7 @@ export async function reorderHumorFlavorStep(
   for (const update of updates) {
     const { error } = await supabase
       .from("humor_flavor_steps")
-      .update({ order_by: update.order_by })
+      .update({ order_by: update.order_by, modified_by_user_id: user.id })
       .eq("id", update.id);
 
     if (error) throw error;
@@ -681,7 +688,7 @@ export async function testHumorFlavorOnImage(
   humorFlavorId: number,
   imageId: string
 ) {
-  await requireSuperadmin();
+  const { user } = await requireSuperadmin();
   const supabase = await createSupabaseServerClient();
 
   // Get all steps for this flavor
@@ -739,8 +746,9 @@ export async function testHumorFlavorOnImage(
           humor_flavor_step_id: steps[steps.length - 1]?.id, // Use the last step
           processing_time_seconds: result.processing_time_seconds || 0,
           llm_model_id: 1,
-          profile_id: (await supabase.auth.getUser()).data.user?.id,
-          created_datetime_utc: new Date().toISOString(),
+          profile_id: user.id,
+          created_by_user_id: user.id,
+          modified_by_user_id: user.id,
         },
       ]);
 
